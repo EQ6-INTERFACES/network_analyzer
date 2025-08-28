@@ -1,0 +1,57 @@
+{
+  "app": {
+    "name": "Network Analyzer",
+    "version": "2.0.0",
+    "debug": true
+  },
+  "credentials": {
+    "ficosa": {
+      "username": "omsa",
+      "password": "omsa$2006#"
+    },
+    "bridgenet": {
+      "username": "marguelles", 
+      "password": "2p5H6G#FJZX4fa2"
+    },
+    "default": {
+      "username": "admin",
+      "password": "admin123"
+    }
+  },
+  "jump_hosts": {
+    "bridgenet": {
+      "host": "10.24.1.195",
+      "port": 22,
+      "credential": "bridgenet"
+    }
+  },
+  "clientes": {
+    "ficosa": {
+      "nombre": "FICOSA",
+      "credential": "ficosa",
+      "jump_host": "bridgenet",
+      "devices": [
+        {
+          "id": "ficosa_fw_01",
+          "hostname": "FICOSA-FW-01",
+          "ip": "200.188.36.141",
+          "type": "cisco_asa",
+          "protocol": "ssh"
+        },
+        {
+          "id": "ficosa_sw_01",
+          "hostname": "FICOSA-SW-01",
+          "ip": "200.188.36.143",
+          "type": "cisco_ios",
+          "protocol": "ssh"
+        }
+      ]
+    }
+  },
+  "checks": {
+    "health": ["show version", "show processes cpu", "show memory"],
+    "interfaces": ["show interface status", "show interface counters errors"],
+    "spanning_tree": ["show spanning-tree summary"],
+    "vlans": ["show vlan brief", "show interface trunk"]
+  }
+}

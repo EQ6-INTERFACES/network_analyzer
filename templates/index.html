@@ -1,0 +1,446 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Network Analyzer{% endblock %}
+
+{% block extra_css %}
+<style>
+    .client-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+        cursor: pointer;
+        transition: transform 0.3s;
+    }
+    
+    .client-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .device-badge {
+        background: rgba(255,255,255,0.2);
+        padding: 5px 10px;
+        border-radius: 20px;
+        margin: 2px;
+        display: inline-block;
+    }
+    
+    .stats-card {
+        border: none;
+        border-radius: 15px;
+        background: white;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: all 0.3s;
+    }
+    
+    .stats-card:hover {
+        box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1><i class="bi bi-grid-3x3-gap"></i> Network Health Dashboard</h1>
+            <div>
+                <button class="btn btn-primary" onclick="showAddClient()">
+                    <i class="bi bi-plus-lg"></i> Nuevo Cliente
+                </button>
+                <button class="btn btn-dark" onclick="toggleTheme()">
+                    <i class="bi bi-moon-stars" id="themeIcon"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stats-card card">
+            <div class="card-body text-center">
+                <h3 class="text-primary" id="totalClients">0</h3>
+                <p class="mb-0">Clientes</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card card">
+            <div class="card-body text-center">
+                <h3 class="text-success" id="totalDevices">0</h3>
+                <p class="mb-0">Dispositivos</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card card">
+            <div class="card-body text-center">
+                <h3 class="text-info" id="totalAnalysis">0</h3>
+                <p class="mb-0">Análisis</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card card">
+            <div class="card-body text-center">
+                <h3 class="text-warning" id="avgScore">0%</h3>
+                <p class="mb-0">Score Promedio</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Clients Grid -->
+<div class="row" id="clientsGrid">
+    <!-- Se llena dinámicamente -->
+</div>
+
+<!-- Modal Mejorado para Cliente -->
+<div class="modal fade" id="clientModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Gestión de Cliente</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="nav nav-tabs" id="clientTabs">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#generalTab">General</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#devicesTab">Dispositivos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#credentialsTab">Credenciales</a>
+                    </li>
+                </ul>
+                
+                <div class="tab-content mt-3">
+                    <!-- Tab General -->
+                    <div class="tab-pane fade show active" id="generalTab">
+                        <form id="clientForm">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label>ID del Cliente</label>
+                                    <input type="text" class="form-control" id="client_id" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label>Nombre</label>
+                                    <input type="text" class="form-control" id="client_name" required>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-md-12">
+                                    <label>Descripción</label>
+                                    <textarea class="form-control" id="client_desc" rows="2"></textarea>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-md-6">
+                                    <label>Método de Conexión</label>
+                                    <select class="form-select" id="connection_method">
+                                        <option value="direct">Directo</option>
+                                        <option value="aura">Vía AURA</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Tab Dispositivos -->
+                    <div class="tab-pane fade" id="devicesTab">
+                        <div class="mb-3">
+                            <button class="btn btn-success" onclick="showAddDevice()">
+                                <i class="bi bi-plus"></i> Añadir Dispositivo
+                            </button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Hostname</th>
+                                        <th>IP</th>
+                                        <th>Tipo</th>
+                                        <th>Protocolo</th>
+                                        <th>Vendor</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="devicesTableBody">
+                                    <!-- Se llena dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Tab Credenciales -->
+                    <div class="tab-pane fade" id="credentialsTab">
+                        <p>Configure las credenciales desde el menú principal</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" onclick="saveClient()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Dispositivo -->
+<div class="modal fade" id="deviceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Dispositivo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="deviceForm">
+                    <div class="mb-3">
+                        <label>Hostname</label>
+                        <input type="text" class="form-control" id="device_hostname" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>IP</label>
+                        <input type="text" class="form-control" id="device_ip" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label>Tipo</label>
+                            <select class="form-select" id="device_type">
+                                <option value="switch">Switch</option>
+                                <option value="router">Router</option>
+                                <option value="firewall">Firewall</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label>Protocolo</label>
+                            <select class="form-select" id="device_protocol">
+                                <option value="ssh">SSH</option>
+                                <option value="telnet">Telnet</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <label>Vendor</label>
+                            <select class="form-select" id="device_vendor">
+                                <option value="cisco_ios">Cisco IOS</option>
+                                <option value="cisco_nexus">Cisco Nexus</option>
+                                <option value="huawei">Huawei</option>
+                                <option value="hp">HP</option>
+                                <option value="juniper">Juniper</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label>Rol</label>
+                            <select class="form-select" id="device_role">
+                                <option value="core">Core</option>
+                                <option value="distribution">Distribution</option>
+                                <option value="access">Access</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveDevice()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Variables globales
+let currentClient = null;
+let currentDevices = [];
+let editingDevice = null;
+
+// Cargar al iniciar
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboard();
+});
+
+function loadDashboard() {
+    fetch('/api/config')
+        .then(response => response.json())
+        .then(data => {
+            const grid = document.getElementById('clientsGrid');
+            grid.innerHTML = '';
+            
+            let totalDevices = 0;
+            const clientCount = Object.keys(data.clientes || {}).length;
+            
+            Object.entries(data.clientes || {}).forEach(([id, client]) => {
+                const devices = client.devices || [];
+                totalDevices += devices.length;
+                
+                const card = document.createElement('div');
+                card.className = 'col-md-6 col-lg-4';
+                card.innerHTML = `
+                    <div class="client-card" onclick="editClient('${id}')">
+                        <h4>${client.nombre}</h4>
+                        <p class="mb-2">${client.descripcion || 'Sin descripción'}</p>
+                        <div>
+                            ${devices.map(d => `
+                                <span class="device-badge">
+                                    <i class="bi bi-${d.type === 'router' ? 'diagram-3' : 'hdd-network'}"></i>
+                                    ${d.hostname}
+                                </span>
+                            `).join('')}
+                        </div>
+                        <div class="mt-3">
+                            <small>${devices.length} dispositivos</small>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            
+            // Actualizar stats
+            document.getElementById('totalClients').textContent = clientCount;
+            document.getElementById('totalDevices').textContent = totalDevices;
+        });
+}
+
+function showAddClient() {
+    currentClient = null;
+    currentDevices = [];
+    document.getElementById('clientForm').reset();
+    document.getElementById('devicesTableBody').innerHTML = '';
+    const modal = new bootstrap.Modal(document.getElementById('clientModal'));
+    modal.show();
+}
+
+function editClient(clientId) {
+    fetch('/api/config')
+        .then(response => response.json())
+        .then(data => {
+            const client = data.clientes[clientId];
+            currentClient = clientId;
+            currentDevices = client.devices || [];
+            
+            document.getElementById('client_id').value = clientId;
+            document.getElementById('client_name').value = client.nombre;
+            document.getElementById('client_desc').value = client.descripcion || '';
+            document.getElementById('connection_method').value = client.connection_method;
+            
+            renderDevicesTable();
+            
+            const modal = new bootstrap.Modal(document.getElementById('clientModal'));
+            modal.show();
+        });
+}
+
+function renderDevicesTable() {
+    const tbody = document.getElementById('devicesTableBody');
+    tbody.innerHTML = '';
+    
+    currentDevices.forEach((device, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${device.hostname}</td>
+            <td>${device.ip}</td>
+            <td>${device.type}</td>
+            <td>${device.protocol}</td>
+            <td>${device.vendor}</td>
+            <td>
+                <button class="btn btn-sm btn-warning" onclick="editDevice(${index})">
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteDevice(${index})">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function showAddDevice() {
+    editingDevice = null;
+    document.getElementById('deviceForm').reset();
+    const modal = new bootstrap.Modal(document.getElementById('deviceModal'));
+    modal.show();
+}
+
+function editDevice(index) {
+    editingDevice = index;
+    const device = currentDevices[index];
+    
+    document.getElementById('device_hostname').value = device.hostname;
+    document.getElementById('device_ip').value = device.ip;
+    document.getElementById('device_type').value = device.type;
+    document.getElementById('device_protocol').value = device.protocol;
+    document.getElementById('device_vendor').value = device.vendor;
+    document.getElementById('device_role').value = device.role;
+    
+    const modal = new bootstrap.Modal(document.getElementById('deviceModal'));
+    modal.show();
+}
+
+function saveDevice() {
+    const device = {
+        id: document.getElementById('device_hostname').value.toLowerCase().replace(/\s+/g, '-'),
+        hostname: document.getElementById('device_hostname').value,
+        ip: document.getElementById('device_ip').value,
+        type: document.getElementById('device_type').value,
+        protocol: document.getElementById('device_protocol').value,
+        vendor: document.getElementById('device_vendor').value,
+        role: document.getElementById('device_role').value,
+        credential_ref: currentClient + '_cred'
+    };
+    
+    if (editingDevice !== null) {
+        currentDevices[editingDevice] = device;
+    } else {
+        currentDevices.push(device);
+    }
+    
+    renderDevicesTable();
+    bootstrap.Modal.getInstance(document.getElementById('deviceModal')).hide();
+}
+
+function deleteDevice(index) {
+    if (confirm('¿Eliminar dispositivo?')) {
+        currentDevices.splice(index, 1);
+        renderDevicesTable();
+    }
+}
+
+function saveClient() {
+    const clientData = {
+        id: document.getElementById('client_id').value,
+        nombre: document.getElementById('client_name').value,
+        descripcion: document.getElementById('client_desc').value,
+        connection_method: document.getElementById('connection_method').value,
+        devices: currentDevices
+    };
+    
+    const method = currentClient ? 'PUT' : 'POST';
+    const url = currentClient ? `/api/client/${currentClient}` : '/api/client';
+    
+    fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(clientData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Cliente guardado', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('clientModal')).hide();
+            loadDashboard();
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Network Health Analyzer{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-activity"></i> Network Analyzer
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">
+                            <i class="bi bi-speedometer2"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/analysis">
+                            <i class="bi bi-search"></i> Análisis
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showCredentials()">
+                            <i class="bi bi-key"></i> Credenciales
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container-fluid py-4">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Modal para Credenciales -->
+    <div class="modal fade" id="credentialsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Gestión de Credenciales</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="credentialForm">
+                        <div class="mb-3">
+                            <label for="service_name" class="form-label">Servicio/Cliente</label>
+                            <input type="text" class="form-control" id="service_name" required>
+                            <small class="text-muted">Ej: aura_main, ibero_cred, etc.</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Usuario</label>
+                            <input type="text" class="form-control" id="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Contraseña</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="password" required>
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
+                                    <i class="bi bi-eye" id="passwordToggle"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Guardar Credencial</button>
+                    </form>
+                    
+                    <hr>
+                    
+                    <h6>Credenciales Guardadas</h6>
+                    <ul id="credentialsList" class="list-group">
+                        <!-- Se llena dinámicamente -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast para notificaciones -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div id="liveToast" class="toast" role="alert">
+            <div class="toast-header">
+                <strong class="me-auto">Notificación</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toastMessage">
+                <!-- Mensaje dinámico -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    <!-- jQuery (opcional pero útil) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
+    
+    <script>
+        // Funciones globales básicas
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('liveToast');
+            const toastBody = document.getElementById('toastMessage');
+            toastBody.textContent = message;
+            
+            // Cambiar color según tipo
+            toast.classList.remove('bg-success', 'bg-danger', 'bg-warning');
+            if (type === 'success') toast.classList.add('bg-success', 'text-white');
+            else if (type === 'error') toast.classList.add('bg-danger', 'text-white');
+            else if (type === 'warning') toast.classList.add('bg-warning');
+            
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+        }
+        
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const toggleIcon = document.getElementById('passwordToggle');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('bi-eye');
+                toggleIcon.classList.add('bi-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('bi-eye-slash');
+                toggleIcon.classList.add('bi-eye');
+            }
+        }
+        
+        function showCredentials() {
+            loadCredentials();
+            const modal = new bootstrap.Modal(document.getElementById('credentialsModal'));
+            modal.show();
+        }
+        
+        function loadCredentials() {
+            fetch('/api/credentials')
+                .then(response => response.json())
+                .then(data => {
+                    const list = document.getElementById('credentialsList');
+                    list.innerHTML = '';
+                    
+                    if (data.services && data.services.length > 0) {
+                        data.services.forEach(service => {
+                            const li = document.createElement('li');
+                            li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                            li.innerHTML = `
+                                <span>${service}</span>
+                                <button class="btn btn-sm btn-danger" onclick="deleteCredential('${service}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            `;
+                            list.appendChild(li);
+                        });
+                    } else {
+                        list.innerHTML = '<li class="list-group-item">No hay credenciales guardadas</li>';
+                    }
+                });
+        }
+        
+        function deleteCredential(service) {
+            if (confirm(`¿Eliminar credencial para ${service}?`)) {
+                fetch(`/api/credentials/${service}`, { method: 'DELETE' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast('Credencial eliminada', 'success');
+                            loadCredentials();
+                        } else {
+                            showToast(data.error || 'Error al eliminar', 'error');
+                        }
+                    });
+            }
+        }
+        
+        // Guardar nueva credencial
+        document.getElementById('credentialForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const data = {
+                service: document.getElementById('service_name').value,
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value
+            };
+            
+            fetch('/api/credentials', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showToast('Credencial guardada', 'success');
+                    document.getElementById('credentialForm').reset();
+                    loadCredentials();
+                } else {
+                    showToast(result.error || 'Error al guardar', 'error');
+                }
+            });
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

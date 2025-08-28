@@ -1,0 +1,609 @@
+{% extends "base.html" %}
+
+{% block title %}Análisis - Network Analyzer{% endblock %}
+
+{% block extra_css %}
+<style>
+    .check-item {
+        padding: 10px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        transition: all 0.3s;
+    }
+    
+    .check-item:hover {
+        background-color: #f8f9fa;
+        border-color: #0d6efd;
+    }
+    
+    .check-item input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+    }
+    
+    .device-select-card {
+        border: 2px solid #dee2e6;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .device-select-card.selected {
+        border-color: #0d6efd;
+        background-color: #e7f1ff;
+    }
+    
+    .command-editor {
+        font-family: 'Monaco', 'Consolas', monospace;
+        background-color: #1e1e1e;
+        color: #d4d4d4;
+        border-radius: 8px;
+        padding: 15px;
+    }
+    
+    .nav-tabs .nav-link.active {
+        background-color: #0d6efd;
+        color: white;
+        border-color: #0d6efd;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1><i class="bi bi-search"></i> Análisis de Red</h1>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Panel de Configuración -->
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Configuración del Análisis</h5>
+            </div>
+            <div class="card-body">
+                <!-- Selección de Cliente -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">1. Cliente</label>
+                    <select class="form-select form-select-lg" id="clientSelect">
+                        <option value="">Seleccione un cliente...</option>
+                    </select>
+                </div>
+                
+                <!-- Selección de Dispositivos -->
+                <div class="mb-4" id="devicesSection" style="display: none;">
+                    <label class="form-label fw-bold">2. Dispositivos a analizar</label>
+                    <div id="devicesList">
+                        <!-- Se llena dinámicamente -->
+                    </div>
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" id="selectAllDevices">
+                        <label class="form-check-label" for="selectAllDevices">
+                            Seleccionar todos
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Tipo de Análisis -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">3. Tipo de Análisis</label>
+                    
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-bs-toggle="tab" href="#checklistTab">
+                                <i class="bi bi-list-check"></i> Checklist
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#customTab">
+                                <i class="bi bi-terminal"></i> Comandos
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#templatesTab">
+                                <i class="bi bi-file-text"></i> Plantillas
+                            </a>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content mt-3">
+                        <!-- Tab Checklist -->
+                        <div class="tab-pane fade show active" id="checklistTab">
+                            <div class="check-item">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="check_health" checked>
+                                    <label class="form-check-label" for="check_health">
+                                        <strong>Estado General</strong>
+                                        <small class="text-muted d-block">CPU, Memoria, Uptime, Temperatura</small>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="check-item">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="check_interfaces">
+                                    <label class="form-check-label" for="check_interfaces">
+                                        <strong>Interfaces</strong>
+                                        <small class="text-muted d-block">Errores, CRC, Drops, Utilización</small>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="check-item">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="check_stp">
+                                    <label class="form-check-label" for="check_stp">
+                                        <strong>Spanning Tree</strong>
+                                        <small class="text-muted d-block">Root Bridge, TCN, Blocked Ports</small>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="check-item">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="check_vlans">
+                                    <label class="form-check-label" for="check_vlans">
+                                        <strong>VLANs y Trunks</strong>
+                                        <small class="text-muted d-block">Native VLAN, Trunks, VTP</small>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="check-item">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="check_routing">
+                                    <label class="form-check-label" for="check_routing">
+                                        <strong>Routing</strong>
+                                        <small class="text-muted d-block">OSPF, BGP, Rutas estáticas</small>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="check-item">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="check_redundancy">
+                                    <label class="form-check-label" for="check_redundancy">
+                                        <strong>Redundancia</strong>
+                                        <small class="text-muted d-block">HSRP, VRRP, Stack</small>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="check-item">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="check_security">
+                                    <label class="form-check-label" for="check_security">
+                                        <strong>Seguridad</strong>
+                                        <small class="text-muted d-block">Port Security, ACLs, 802.1X</small>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="check-item">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="check_logs">
+                                    <label class="form-check-label" for="check_logs">
+                                        <strong>Logs del Sistema</strong>
+                                        <small class="text-muted d-block">Errores, Warnings, Critical</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Tab Comandos Personalizados -->
+                        <div class="tab-pane fade" id="customTab">
+                            <div class="mb-3">
+                                <label class="form-label">Comandos a ejecutar (uno por línea)</label>
+                                <textarea class="form-control command-editor" id="customCommands" rows="10" placeholder="show version&#10;show ip interface brief&#10;show running-config"></textarea>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="saveAsTemplate">
+                                <label class="form-check-label" for="saveAsTemplate">
+                                    Guardar como plantilla
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Tab Plantillas -->
+                        <div class="tab-pane fade" id="templatesTab">
+                            <div class="list-group">
+                                <button class="list-group-item list-group-item-action" onclick="loadTemplate('basic')">
+                                    <strong>Diagnóstico Básico</strong>
+                                    <small class="d-block">Version, Interfaces, CPU, Memory</small>
+                                </button>
+                                <button class="list-group-item list-group-item-action" onclick="loadTemplate('full')">
+                                    <strong>Backup Completo</strong>
+                                    <small class="d-block">Running-config, Startup-config, VLANs</small>
+                                </button>
+                                <button class="list-group-item list-group-item-action" onclick="loadTemplate('troubleshoot')">
+                                    <strong>Troubleshooting</strong>
+                                    <small class="d-block">Logs, Errors, Drops, CPU History</small>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Botones de Acción -->
+                <div class="d-grid gap-2">
+                    <button class="btn btn-primary btn-lg" id="startButton">
+                        <i class="bi bi-play-circle"></i> Iniciar Análisis
+                    </button>
+                    <button class="btn btn-danger btn-lg" id="stopButton" style="display: none;">
+                        <i class="bi bi-stop-circle"></i> Detener
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Panel de Progreso -->
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Progreso y Resultados</h5>
+            </div>
+            <div class="card-body">
+                <!-- Progress -->
+                <div class="mb-3">
+                    <div class="progress" style="height: 30px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" id="progressBar" style="width: 0%">0%</div>
+                    </div>
+                </div>
+                
+                <!-- Current Status -->
+                <div class="alert alert-info" id="statusAlert">
+                    <i class="bi bi-info-circle"></i>
+                    <span id="statusMessage">Esperando configuración...</span>
+                </div>
+                
+                <!-- Device Progress List -->
+                <div id="deviceProgress" style="display: none;">
+                    <h6>Estado por dispositivo:</h6>
+                    <div id="deviceProgressList">
+                        <!-- Se llena dinámicamente -->
+                    </div>
+                </div>
+                
+                <!-- Log -->
+                <div class="card bg-dark text-light mt-3">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Log de Actividad</h6>
+                            <button class="btn btn-sm btn-outline-light" onclick="clearLog()">
+                                <i class="bi bi-trash"></i> Limpiar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="height: 300px; overflow-y: auto;" id="logContainer">
+                        <pre id="logContent" style="margin: 0; color: #00ff00; font-size: 0.85em;"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedClient = null;
+let selectedDevices = [];
+let analysisMode = 'checklist';
+let analysisInProgress = false;
+
+// Templates de comandos
+const commandTemplates = {
+    basic: [
+        'show version',
+        'show ip interface brief',
+        'show interface status',
+        'show processes cpu',
+        'show memory statistics'
+    ],
+    full: [
+        'show running-config',
+        'show startup-config',
+        'show vlan brief',
+        'show interface trunk',
+        'show inventory'
+    ],
+    troubleshoot: [
+        'show logging | include Error|Warning',
+        'show interface | include error|drop',
+        'show processes cpu history',
+        'show spanning-tree detail',
+        'show mac address-table dynamic'
+    ]
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadClients();
+    setupEventListeners();
+});
+
+function loadClients() {
+    fetch('/api/config')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('clientSelect');
+            select.innerHTML = '<option value="">Seleccione un cliente...</option>';
+            
+            Object.entries(data.clientes || {}).forEach(([id, client]) => {
+                const option = document.createElement('option');
+                option.value = id;
+                option.textContent = `${client.nombre} (${(client.devices || []).length} dispositivos)`;
+                select.appendChild(option);
+            });
+        });
+}
+
+function setupEventListeners() {
+    // Cliente selection
+    document.getElementById('clientSelect').addEventListener('change', function() {
+        selectedClient = this.value;
+        if (selectedClient) {
+            loadClientDevices(selectedClient);
+            document.getElementById('devicesSection').style.display = 'block';
+        } else {
+            document.getElementById('devicesSection').style.display = 'none';
+        }
+    });
+    
+    // Select all devices
+    document.getElementById('selectAllDevices').addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('.device-checkbox');
+        checkboxes.forEach(cb => cb.checked = this.checked);
+        updateSelectedDevices();
+    });
+    
+    // Start analysis
+    document.getElementById('startButton').addEventListener('click', startAnalysis);
+    document.getElementById('stopButton').addEventListener('click', stopAnalysis);
+}
+
+function loadClientDevices(clientId) {
+    fetch('/api/config')
+        .then(response => response.json())
+        .then(data => {
+            const client = data.clientes[clientId];
+            const devices = client.devices || [];
+            const container = document.getElementById('devicesList');
+            container.innerHTML = '';
+            
+            devices.forEach(device => {
+                const card = document.createElement('div');
+                card.className = 'device-select-card';
+                card.innerHTML = `
+                    <div class="form-check">
+                        <input class="form-check-input device-checkbox" type="checkbox" 
+                               value="${device.id}" id="device_${device.id}">
+                        <label class="form-check-label w-100" for="device_${device.id}">
+                            <div class="d-flex justify-content-between">
+                                <strong>${device.hostname}</strong>
+                                <span class="badge bg-secondary">${device.vendor}</span>
+                            </div>
+                            <small class="text-muted">
+                                ${device.ip} - ${device.type} - ${device.protocol.toUpperCase()}
+                            </small>
+                        </label>
+                    </div>
+                `;
+                
+                card.querySelector('.device-checkbox').addEventListener('change', updateSelectedDevices);
+                container.appendChild(card);
+            });
+        });
+}
+
+function updateSelectedDevices() {
+    selectedDevices = [];
+    document.querySelectorAll('.device-checkbox:checked').forEach(cb => {
+        selectedDevices.push(cb.value);
+    });
+    
+    // Update visual feedback
+    document.querySelectorAll('.device-select-card').forEach(card => {
+        const checkbox = card.querySelector('.device-checkbox');
+        if (checkbox.checked) {
+            card.classList.add('selected');
+        } else {
+            card.classList.remove('selected');
+        }
+    });
+}
+
+function loadTemplate(templateName) {
+    const commands = commandTemplates[templateName];
+    document.getElementById('customCommands').value = commands.join('\n');
+    
+    // Switch to custom tab
+    const customTab = document.querySelector('[href="#customTab"]');
+    bootstrap.Tab.getOrCreateInstance(customTab).show();
+}
+
+function getSelectedChecks() {
+    const checks = [];
+    document.querySelectorAll('#checklistTab input[type="checkbox"]:checked').forEach(cb => {
+        checks.push(cb.id.replace('check_', ''));
+    });
+    return checks;
+}
+
+function startAnalysis() {
+    // Validations
+    if (!selectedClient) {
+        showToast('Seleccione un cliente', 'warning');
+        return;
+    }
+    
+    if (selectedDevices.length === 0) {
+        showToast('Seleccione al menos un dispositivo', 'warning');
+        return;
+    }
+    
+    // Determine analysis mode
+    const activeTab = document.querySelector('.tab-pane.active').id;
+    let analysisConfig = {};
+    
+    if (activeTab === 'checklistTab') {
+        analysisConfig.mode = 'checklist';
+        analysisConfig.checks = getSelectedChecks();
+        if (analysisConfig.checks.length === 0) {
+            showToast('Seleccione al menos un check', 'warning');
+            return;
+        }
+    } else if (activeTab === 'customTab') {
+        const commands = document.getElementById('customCommands').value.trim();
+        if (!commands) {
+            showToast('Ingrese comandos a ejecutar', 'warning');
+            return;
+        }
+        analysisConfig.mode = 'custom';
+        analysisConfig.commands = commands.split('\n').filter(cmd => cmd.trim());
+    }
+    
+    // Start analysis
+    analysisInProgress = true;
+    document.getElementById('startButton').style.display = 'none';
+    document.getElementById('stopButton').style.display = 'block';
+    document.getElementById('deviceProgress').style.display = 'block';
+    
+    // Initialize device progress
+    initDeviceProgress();
+    
+    // Send request
+    const payload = {
+        client: selectedClient,
+        devices: selectedDevices,
+        config: analysisConfig
+    };
+    
+    addLog('Iniciando análisis...');
+    addLog(`Cliente: ${selectedClient}`);
+    addLog(`Dispositivos: ${selectedDevices.length}`);
+    
+    fetch(`/api/analyze/${selectedClient}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            addLog('✓ Análisis iniciado correctamente');
+        } else {
+            showToast(data.error || 'Error al iniciar', 'error');
+            resetUI();
+        }
+    });
+}
+
+function stopAnalysis() {
+    if (confirm('¿Detener el análisis en curso?')) {
+        analysisInProgress = false;
+        resetUI();
+        addLog('✗ Análisis detenido por el usuario');
+    }
+}
+
+function initDeviceProgress() {
+    const container = document.getElementById('deviceProgressList');
+    container.innerHTML = '';
+    
+    selectedDevices.forEach(deviceId => {
+        const item = document.createElement('div');
+        item.className = 'mb-2';
+        item.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <span>${deviceId}</span>
+                <span class="badge bg-secondary" id="status_${deviceId}">Pendiente</span>
+            </div>
+            <div class="progress" style="height: 5px;">
+                <div class="progress-bar" id="progress_${deviceId}" style="width: 0%"></div>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+function updateDeviceStatus(deviceId, status, progress) {
+    const statusBadge = document.getElementById(`status_${deviceId}`);
+    const progressBar = document.getElementById(`progress_${deviceId}`);
+    
+    if (statusBadge) {
+        statusBadge.textContent = status;
+        statusBadge.className = 'badge bg-' + getStatusColor(status);
+    }
+    
+    if (progressBar) {
+        progressBar.style.width = progress + '%';
+    }
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'Pendiente': 'secondary',
+        'Conectando': 'info',
+        'Analizando': 'warning',
+        'Completado': 'success',
+        'Error': 'danger'
+    };
+    return colors[status] || 'secondary';
+}
+
+function resetUI() {
+    document.getElementById('startButton').style.display = 'block';
+    document.getElementById('stopButton').style.display = 'none';
+    analysisInProgress = false;
+}
+
+function addLog(message) {
+    const logContent = document.getElementById('logContent');
+    const timestamp = new Date().toLocaleTimeString();
+    logContent.textContent += `[${timestamp}] ${message}\n`;
+    
+    const container = document.getElementById('logContainer');
+    container.scrollTop = container.scrollHeight;
+}
+
+function clearLog() {
+    document.getElementById('logContent').textContent = '';
+}
+
+// Socket events
+if (window.socket) {
+    socket.on('device_progress', function(data) {
+        updateDeviceStatus(data.device, data.status, data.progress);
+    });
+    
+    socket.on('analysis_progress', function(data) {
+        const progressBar = document.getElementById('progressBar');
+        progressBar.style.width = data.progress + '%';
+        progressBar.textContent = data.progress + '%';
+        
+        document.getElementById('statusMessage').textContent = data.message;
+        addLog(data.message);
+    });
+    
+    socket.on('analysis_completed', function(data) {
+        resetUI();
+        showToast('Análisis completado', 'success');
+        
+        // Show results button
+        if (data.report_id) {
+            addLog(`✓ Reporte generado: ${data.report_id}`);
+            setTimeout(() => {
+                window.location.href = `/report/${data.report_id}`;
+            }, 2000);
+        }
+    });
+}
+</script>
+{% endblock %}
