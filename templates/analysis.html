@@ -50,6 +50,14 @@
         color: white;
         border-color: #0d6efd;
     }
+    
+    #logContent {
+        background-color: #000;
+        color: #0f0;
+        font-family: 'Courier New', monospace;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
 </style>
 {% endblock %}
 
@@ -137,8 +145,8 @@
                             
                             <div class="check-item">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="check_stp">
-                                    <label class="form-check-label" for="check_stp">
+                                    <input class="form-check-input" type="checkbox" id="check_spanning_tree">
+                                    <label class="form-check-label" for="check_spanning_tree">
                                         <strong>Spanning Tree</strong>
                                         <small class="text-muted d-block">Root Bridge, TCN, Blocked Ports</small>
                                     </label>
@@ -154,46 +162,6 @@
                                     </label>
                                 </div>
                             </div>
-                            
-                            <div class="check-item">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="check_routing">
-                                    <label class="form-check-label" for="check_routing">
-                                        <strong>Routing</strong>
-                                        <small class="text-muted d-block">OSPF, BGP, Rutas estáticas</small>
-                                    </label>
-                                </div>
-                            </div>
-                            
-                            <div class="check-item">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="check_redundancy">
-                                    <label class="form-check-label" for="check_redundancy">
-                                        <strong>Redundancia</strong>
-                                        <small class="text-muted d-block">HSRP, VRRP, Stack</small>
-                                    </label>
-                                </div>
-                            </div>
-                            
-                            <div class="check-item">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="check_security">
-                                    <label class="form-check-label" for="check_security">
-                                        <strong>Seguridad</strong>
-                                        <small class="text-muted d-block">Port Security, ACLs, 802.1X</small>
-                                    </label>
-                                </div>
-                            </div>
-                            
-                            <div class="check-item">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="check_logs">
-                                    <label class="form-check-label" for="check_logs">
-                                        <strong>Logs del Sistema</strong>
-                                        <small class="text-muted d-block">Errores, Warnings, Critical</small>
-                                    </label>
-                                </div>
-                            </div>
                         </div>
                         
                         <!-- Tab Comandos Personalizados -->
@@ -201,12 +169,6 @@
                             <div class="mb-3">
                                 <label class="form-label">Comandos a ejecutar (uno por línea)</label>
                                 <textarea class="form-control command-editor" id="customCommands" rows="10" placeholder="show version&#10;show ip interface brief&#10;show running-config"></textarea>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="saveAsTemplate">
-                                <label class="form-check-label" for="saveAsTemplate">
-                                    Guardar como plantilla
-                                </label>
                             </div>
                         </div>
                         
@@ -275,14 +237,19 @@
                 <div class="card bg-dark text-light mt-3">
                     <div class="card-header">
                         <div class="d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0">Log de Actividad</h6>
-                            <button class="btn btn-sm btn-outline-light" onclick="clearLog()">
-                                <i class="bi bi-trash"></i> Limpiar
-                            </button>
+                            <h6 class="mb-0">Salida de Consola</h6>
+                            <div>
+                                <button class="btn btn-sm btn-outline-success" onclick="exportLog()">
+                                    <i class="bi bi-download"></i> Exportar
+                                </button>
+                                <button class="btn btn-sm btn-outline-light" onclick="clearLog()">
+                                    <i class="bi bi-trash"></i> Limpiar
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    <div class="card-body" style="height: 300px; overflow-y: auto;" id="logContainer">
-                        <pre id="logContent" style="margin: 0; color: #00ff00; font-size: 0.85em;"></pre>
+                    <div class="card-body" style="height: 400px; overflow-y: auto;" id="logContainer">
+                        <pre id="logContent" style="margin: 0; font-size: 0.85em;"></pre>
                     </div>
                 </div>
             </div>
@@ -292,11 +259,14 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
 <script>
 let selectedClient = null;
 let selectedDevices = [];
 let analysisMode = 'checklist';
 let analysisInProgress = false;
+let socket = null;
+let logBuffer = [];
 
 // Templates de comandos
 const commandTemplates = {
@@ -326,7 +296,32 @@ const commandTemplates = {
 document.addEventListener('DOMContentLoaded', function() {
     loadClients();
     setupEventListeners();
+    connectSocket();
 });
+
+function connectSocket() {
+    socket = io();
+    
+    socket.on('connect', function() {
+        console.log('Socket conectado');
+    });
+    
+    socket.on('console_log', function(data) {
+        addLog(data.message);
+    });
+    
+    socket.on('device_progress', function(data) {
+        updateDeviceStatus(data.device, data.status, data.progress || 0);
+    });
+    
+    socket.on('analysis_progress', function(data) {
+        const progressBar = document.getElementById('progressBar');
+        progressBar.style.width = data.progress + '%';
+        progressBar.textContent = data.progress + '%';
+        
+        document.getElementById('statusMessage').textContent = data.message;
+    });
+}
 
 function loadClients() {
     fetch('/api/config')
@@ -387,10 +382,10 @@ function loadClientDevices(clientId) {
                         <label class="form-check-label w-100" for="device_${device.id}">
                             <div class="d-flex justify-content-between">
                                 <strong>${device.hostname}</strong>
-                                <span class="badge bg-secondary">${device.vendor}</span>
+                                <span class="badge bg-secondary">${device.type}</span>
                             </div>
                             <small class="text-muted">
-                                ${device.ip} - ${device.type} - ${device.protocol.toUpperCase()}
+                                ${device.ip} - ${device.protocol.toUpperCase()}
                             </small>
                         </label>
                     </div>
@@ -448,25 +443,28 @@ function startAnalysis() {
         return;
     }
     
-    // Determine analysis mode
+    // Determinar modo de análisis basado en la pestaña activa
     const activeTab = document.querySelector('.tab-pane.active').id;
-    let analysisConfig = {};
+    let payload = {
+        client: selectedClient,
+        devices: selectedDevices
+    };
     
     if (activeTab === 'checklistTab') {
-        analysisConfig.mode = 'checklist';
-        analysisConfig.checks = getSelectedChecks();
-        if (analysisConfig.checks.length === 0) {
+        payload.mode = 'checklist';
+        payload.checks = getSelectedChecks();
+        if (payload.checks.length === 0) {
             showToast('Seleccione al menos un check', 'warning');
             return;
         }
-    } else if (activeTab === 'customTab') {
+    } else if (activeTab === 'customTab' || activeTab === 'templatesTab') {
         const commands = document.getElementById('customCommands').value.trim();
         if (!commands) {
             showToast('Ingrese comandos a ejecutar', 'warning');
             return;
         }
-        analysisConfig.mode = 'custom';
-        analysisConfig.commands = commands.split('\n').filter(cmd => cmd.trim());
+        payload.mode = 'custom';
+        payload.commands = commands.split('\n').filter(cmd => cmd.trim());
     }
     
     // Start analysis
@@ -475,20 +473,17 @@ function startAnalysis() {
     document.getElementById('stopButton').style.display = 'block';
     document.getElementById('deviceProgress').style.display = 'block';
     
+    // Clear log
+    clearLog();
+    addLog('Iniciando análisis...');
+    addLog(`Cliente: ${selectedClient}`);
+    addLog(`Dispositivos: ${selectedDevices.join(', ')}`);
+    addLog(`Modo: ${payload.mode}`);
+    
     // Initialize device progress
     initDeviceProgress();
     
     // Send request
-    const payload = {
-        client: selectedClient,
-        devices: selectedDevices,
-        config: analysisConfig
-    };
-    
-    addLog('Iniciando análisis...');
-    addLog(`Cliente: ${selectedClient}`);
-    addLog(`Dispositivos: ${selectedDevices.length}`);
-    
     fetch(`/api/analyze/${selectedClient}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -497,11 +492,25 @@ function startAnalysis() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            addLog('✓ Análisis iniciado correctamente');
+            addLog('✓ Análisis completado');
+            showToast('Análisis completado', 'success');
+            
+            // Mostrar botón para ver reporte
+            if (data.report_id) {
+                addLog(`Reporte guardado: ${data.report_id}`);
+                setTimeout(() => {
+                    window.location.href = `/reports`;
+                }, 3000);
+            }
         } else {
             showToast(data.error || 'Error al iniciar', 'error');
-            resetUI();
         }
+        resetUI();
+    })
+    .catch(error => {
+        addLog(`ERROR: ${error}`, 'error');
+        showToast('Error de conexión', 'error');
+        resetUI();
     });
 }
 
@@ -550,9 +559,12 @@ function updateDeviceStatus(deviceId, status, progress) {
 function getStatusColor(status) {
     const colors = {
         'Pendiente': 'secondary',
+        'connecting': 'info',
         'Conectando': 'info',
         'Analizando': 'warning',
+        'completed': 'success',
         'Completado': 'success',
+        'unreachable': 'danger',
         'Error': 'danger'
     };
     return colors[status] || 'secondary';
@@ -564,46 +576,53 @@ function resetUI() {
     analysisInProgress = false;
 }
 
-function addLog(message) {
+function addLog(message, type = 'info') {
     const logContent = document.getElementById('logContent');
     const timestamp = new Date().toLocaleTimeString();
+    
+    // Agregar al buffer
+    logBuffer.push({timestamp, message, type});
+    
+    // Agregar al display
     logContent.textContent += `[${timestamp}] ${message}\n`;
     
+    // Auto-scroll
     const container = document.getElementById('logContainer');
     container.scrollTop = container.scrollHeight;
 }
 
 function clearLog() {
     document.getElementById('logContent').textContent = '';
+    logBuffer = [];
 }
 
-// Socket events
-if (window.socket) {
-    socket.on('device_progress', function(data) {
-        updateDeviceStatus(data.device, data.status, data.progress);
+function exportLog() {
+    if (logBuffer.length === 0) {
+        showToast('No hay logs para exportar', 'warning');
+        return;
+    }
+    
+    let content = "NETWORK ANALYZER - LOG DE SESIÓN\n";
+    content += "="*50 + "\n";
+    content += `Fecha: ${new Date().toLocaleString()}\n`;
+    content += "="*50 + "\n\n";
+    
+    logBuffer.forEach(entry => {
+        content += `[${entry.timestamp}] ${entry.message}\n`;
     });
     
-    socket.on('analysis_progress', function(data) {
-        const progressBar = document.getElementById('progressBar');
-        progressBar.style.width = data.progress + '%';
-        progressBar.textContent = data.progress + '%';
-        
-        document.getElementById('statusMessage').textContent = data.message;
-        addLog(data.message);
-    });
+    // Crear y descargar archivo
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `network_analyzer_log_${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
     
-    socket.on('analysis_completed', function(data) {
-        resetUI();
-        showToast('Análisis completado', 'success');
-        
-        // Show results button
-        if (data.report_id) {
-            addLog(`✓ Reporte generado: ${data.report_id}`);
-            setTimeout(() => {
-                window.location.href = `/report/${data.report_id}`;
-            }, 2000);
-        }
-    });
+    showToast('Log exportado', 'success');
 }
 </script>
 {% endblock %}

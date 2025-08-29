@@ -12,6 +12,45 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     
+    <style>
+        /* Tema oscuro mejorado */
+        [data-theme="dark"] {
+            background-color: #1a1d23 !important;
+        }
+        
+        [data-theme="dark"] .navbar {
+            background-color: #0d1117 !important;
+        }
+        
+        [data-theme="dark"] .card {
+            background-color: #2d3139 !important;
+            color: #e4e6eb !important;
+            border-color: #3a3d45 !important;
+        }
+        
+        [data-theme="dark"] .modal-content {
+            background-color: #2d3139 !important;
+            color: #e4e6eb !important;
+        }
+        
+        [data-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select {
+            background-color: #22262e !important;
+            color: #e4e6eb !important;
+            border-color: #3a3d45 !important;
+        }
+        
+        [data-theme="dark"] .table {
+            color: #e4e6eb !important;
+        }
+        
+        [data-theme="dark"] .list-group-item {
+            background-color: #22262e !important;
+            color: #e4e6eb !important;
+            border-color: #3a3d45 !important;
+        }
+    </style>
+    
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -34,6 +73,11 @@
                     <li class="nav-item">
                         <a class="nav-link" href="/analysis">
                             <i class="bi bi-search"></i> Análisis
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/reports">
+                            <i class="bi bi-file-text"></i> Reportes
                         </a>
                     </li>
                     <li class="nav-item">

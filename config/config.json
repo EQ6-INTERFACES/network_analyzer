@@ -7,7 +7,8 @@
   "credentials": {
     "ficosa": {
       "username": "omsa",
-      "password": "omsa$2006#"
+      "password": "omsa$2006#",
+      "enable_password": "omsa$2006#"
     },
     "bridgenet": {
       "username": "marguelles", 

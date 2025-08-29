@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Reportes - Network Analyzer{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1><i class="bi bi-file-text"></i> Centro de Reportes</h1>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3>Reportes Disponibles</h3>
+                    <button class="btn btn-primary" onclick="window.location.href='/analysis'">
+                        <i class="bi bi-plus"></i> Nuevo Análisis
+                    </button>
+                </div>
+                <div class="card-body">
+                    {% if reports and reports|length > 0 %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Fecha</th>
+                                    <th>Dispositivos</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for report in reports %}
+                                <tr>
+                                    <td>{{ report.client }}</td>
+                                    <td>{{ report.timestamp }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ report.devices }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success">Completado</span>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-info" onclick="viewReport('{{ report.id }}')">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="downloadPDF('{{ report.id }}')">
+                                            <i class="bi bi-file-pdf"></i> PDF
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> No hay reportes disponibles. 
+                        <a href="/analysis">Realiza un análisis</a> para generar reportes.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para ver detalles del reporte -->
+    <div class="modal fade" id="reportModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detalles del Reporte</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="reportDetails">
+                    <!-- Se llena dinámicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function viewReport(reportId) {
+    fetch(`/api/report/${reportId}`)
+        .then(response => response.json())
+        .then(data => {
+            const details = document.getElementById('reportDetails');
+            let html = `
+                <h5>Cliente: ${data.client_name}</h5>
+                <p>Fecha: ${data.timestamp}</p>
+                <h6>Dispositivos Analizados:</h6>
+                <ul>
+            `;
+            
+            data.devices.forEach(device => {
+                html += `<li>${device.device} (${device.ip}) - Estado: ${device.status}</li>`;
+            });
+            
+            html += '</ul>';
+            details.innerHTML = html;
+            
+            const modal = new bootstrap.Modal(document.getElementById('reportModal'));
+            modal.show();
+        });
+}
+
+function downloadPDF(reportId) {
+    window.location.href = `/api/report/pdf/${reportId}`;
+}
+</script>
+{% endblock %}
